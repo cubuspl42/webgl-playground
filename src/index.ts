@@ -1,66 +1,91 @@
 import './index.css';
 
-const vertexShaderSource = `
+const vertexShaderSource = `#version 300 es
 
-attribute vec2 a_position;
+in vec2 a_position;
 
 void main(void) {
-  gl_Position = vec4(a_position, 0.0, 1.0);
+    gl_Position = vec4(a_position, 0.0, 1.0);
 }
 
 `;
 
-const fragmentShaderSource = `
+const fragmentShaderSource = `#version 300 es
+precision mediump float;
 
-void main(void) {
-  gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+uniform sampler2D u_texture;
+
+out vec4 outColor;
+ 
+void main() {
+    outColor = texture(u_texture, vec2((0.5 + 2.0)/64.0, (0.5 + 1.0)/64.0));
 }
 
 `;
 
 // Select the canvas from the document.
 const canvas = document.querySelector("canvas")!;
-// Create the WebGL context, with fallback for experimental support.
+// Create the WebGL gl, with fallback for experimental support.
 
-const context = canvas.getContext("webgl")!;
+const gl = canvas.getContext("webgl2")!;
 
 // Compile the vertex shader.
-const vertexShader = context.createShader(context.VERTEX_SHADER)!;
-context.shaderSource(vertexShader, vertexShaderSource);
-context.compileShader(vertexShader);
-if (!context.getShaderParameter(vertexShader, context.COMPILE_STATUS))
-    throw new Error(context.getShaderInfoLog(vertexShader)!);
+const vertexShader = gl.createShader(gl.VERTEX_SHADER)!;
+gl.shaderSource(vertexShader, vertexShaderSource);
+gl.compileShader(vertexShader);
+if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(vertexShader)!);
 
 // Compile the fragment shader.
-const fragmentShader = context.createShader(context.FRAGMENT_SHADER)!;
-context.shaderSource(fragmentShader, fragmentShaderSource);
-context.compileShader(fragmentShader);
-if (!context.getShaderParameter(fragmentShader, context.COMPILE_STATUS))
-    throw new Error(context.getShaderInfoLog(fragmentShader)!);
+const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)!;
+gl.shaderSource(fragmentShader, fragmentShaderSource);
+gl.compileShader(fragmentShader);
+if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(fragmentShader)!);
 
 // Link and use the program.
-const program = context.createProgram()!;
-context.attachShader(program, vertexShader);
-context.attachShader(program, fragmentShader);
-context.linkProgram(program);
-if (!context.getProgramParameter(program, context.LINK_STATUS))
-    throw new Error(context.getProgramInfoLog(program)!);
-context.useProgram(program);
+const program = gl.createProgram()!;
+gl.attachShader(program, vertexShader);
+gl.attachShader(program, fragmentShader);
+gl.linkProgram(program);
+if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(program)!);
+gl.useProgram(program);
 
 // Define the positions (as vec2, in normalized coordinates) of the square that covers the canvas.
-const positionBuffer = context.createBuffer();
-context.bindBuffer(context.ARRAY_BUFFER, positionBuffer);
-context.bufferData(context.ARRAY_BUFFER, new Float32Array([
-    -1.0, -1.0,
-    +1.0, -1.0,
-    +1.0, +1.0,
-    -1.0, +1.0
-]), context.STATIC_DRAW);
+const positionBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -0.8, -0.8, // bottom left
+    +0.3, -0.3, // bottom right
+    +0.1, +0.1, // top right
+    -0.5, +0.5  // top left
+]), gl.STATIC_DRAW);
 
 // Bind the position buffer to the position attribute.
-const positionAttribute = context.getAttribLocation(program, "a_position");
-context.enableVertexAttribArray(positionAttribute);
-context.vertexAttribPointer(positionAttribute, 2, context.FLOAT, false, 0, 0);
+const positionAttribute = gl.getAttribLocation(program, "a_position");
+gl.enableVertexAttribArray(positionAttribute);
+gl.vertexAttribPointer(positionAttribute, 2, gl.FLOAT, false, 0, 0);
 
-// Draw the square!
-context.drawArrays(context.TRIANGLE_FAN, 0, 4);
+// Create a texture.
+const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+// Fill the texture with a 1x1 blue pixel.
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+    new Uint8Array([0, 0, 255, 255]));
+
+const image = new Image();
+image.src = "012.png";
+image.addEventListener('load', function () {
+    // Now that the image has loaded make copy it to the texture.
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.generateMipmap(gl.TEXTURE_2D);
+});
+
+function drawScene() {
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+    requestAnimationFrame(drawScene);
+}
+
+drawScene();
