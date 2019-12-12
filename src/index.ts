@@ -3,9 +3,11 @@ import './index.css';
 const vertexShaderSource = `#version 300 es
 
 in vec2 a_position;
+out vec2 v_texcoord;
 
 void main(void) {
-    gl_Position = vec4(a_position, 0.0, 1.0);
+    gl_Position = vec4(a_position.x, -a_position.y, 0.0, 1.0);
+    v_texcoord = a_position;
 }
 
 `;
@@ -14,11 +16,12 @@ const fragmentShaderSource = `#version 300 es
 precision mediump float;
 
 uniform sampler2D u_texture;
+in vec2 v_texcoord;
 
 out vec4 outColor;
  
 void main() {
-    outColor = texture(u_texture, vec2((0.5 + 2.0)/64.0, (0.5 + 1.0)/64.0));
+    outColor = texture(u_texture, v_texcoord);
 }
 
 `;
@@ -56,10 +59,12 @@ gl.useProgram(program);
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    -0.8, -0.8, // bottom left
-    +0.3, -0.3, // bottom right
-    +0.1, +0.1, // top right
-    -0.5, +0.5  // top left
+    0, 0, // bottom left
+    0, 1, // bottom right
+    1, 0, // top right
+    0, 1,
+    1, 1, // --
+    1, 0,
 ]), gl.STATIC_DRAW);
 
 // Bind the position buffer to the position attribute.
@@ -84,7 +89,7 @@ image.addEventListener('load', function () {
 });
 
 function drawScene() {
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, 6);
     requestAnimationFrame(drawScene);
 }
 
