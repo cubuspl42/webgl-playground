@@ -197,3 +197,5 @@ public/
 *.xhtml
 
 # End of https://www.gitignore.io/api/web,node,intellij+all
+
+src/react-app-env.d.ts
